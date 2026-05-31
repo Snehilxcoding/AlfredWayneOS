@@ -1,0 +1,14 @@
+faster-whisper
+edge-tts
+sounddevice
+numpy
+scipy
+psutil
+pyautogui
+pygetwindow
+requests
+colorama
+python-dotenv
+pygame
+google-generativeai
+groq

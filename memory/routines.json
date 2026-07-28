@@ -1,0 +1,11 @@
+{
+  "morning": {
+    "actions": [
+      "open chrome",
+      "open vs code"
+    ],
+    "created": "2026-07-03T10:41:15",
+    "run_count": 2,
+    "last_run": "2026-07-03T10:41:32"
+  }
+}

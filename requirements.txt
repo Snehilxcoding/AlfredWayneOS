@@ -11,4 +11,6 @@ colorama
 python-dotenv
 pygame
 google-generativeai
+google-genai
 groq
+pyaudio

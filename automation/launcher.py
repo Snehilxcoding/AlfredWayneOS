@@ -20,6 +20,10 @@ APP_MAP = {
     "discord":       r"%LOCALAPPDATA%\Discord\Update.exe --processStart Discord.exe",
     "word":          r"C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE",
     "excel":         r"C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE",
+    "chrome":        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+    "google chrome": r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+    "browser":       r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+    "brave":         r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
 }
 
 SITE_MAP = {

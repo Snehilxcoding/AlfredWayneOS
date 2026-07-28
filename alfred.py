@@ -1,6 +1,11 @@
 import sys
 import os
 import time
+try:
+    from core.dashboard import start_dashboard, get_dashboard
+except ImportError:
+    def start_dashboard(): return None
+    def get_dashboard(): return None
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 TEXT_ONLY = "--text" in sys.argv
@@ -23,6 +28,10 @@ from core.coding_assistant  import (
     get_project_structure, format_command_result,
     is_safe_command,
 )
+from core.workflow_engine import (
+    analyze_workflow, save_routine,
+    get_routine, list_routines, delete_routine,
+)
 from memory.memory_manager import (
     load_memory, update_last_seen,
     add_conversation_summary, build_memory_context,
@@ -39,12 +48,16 @@ _pending_command = None
 
 
 def alfred_speak(text: str):
-    """Speak a response. Always blocking — no threading conflicts."""
+    d = get_dashboard()
+    if d:
+        d.set_speaking()
+        d.add_alfred_message(text)
     speak(text, silent=settings.TEXT_ONLY_MODE)
+    if d:
+        d.set_standby()
 
 
 def _api_cooldown(min_gap: float = 4.0):
-    """Enforces minimum gap between API calls to avoid rate limits."""
     global _last_api_call
     elapsed = time.time() - _last_api_call
     if elapsed < min_gap:
@@ -58,7 +71,6 @@ def _api_cooldown(min_gap: float = 4.0):
 
 
 def get_input() -> str:
-    """Get input from user — voice or text depending on mode."""
     if settings.TEXT_ONLY_MODE:
         try:
             print(f"\n{Fore.CYAN}You: {Style.RESET_ALL}", end="")
@@ -66,18 +78,23 @@ def get_input() -> str:
         except (KeyboardInterrupt, EOFError):
             return "goodbye"
     else:
-        from core.voice_input import listen
-        # Print instead of speak — avoids "Listening" being said out loud
+        from core.voice_input_v2 import listen
+        d = get_dashboard()
+        if d:
+            d.set_listening()
         print(f"{Fore.CYAN}[Alfred] Listening...{Style.RESET_ALL}")
         text = listen()
+        if d:
+            d.set_thinking()
         if not text:
             alfred_speak(f"I didn't catch that, {settings.USER_NAME}.")
             return ""
+        if d:
+            d.add_user_message(text)
         return text
 
 
 def handle(parsed: dict, ctx: dict, memory: dict) -> str:
-    """Routes parsed intent to the correct handler."""
     global _pending_command
 
     intent = parsed["intent"]
@@ -203,9 +220,62 @@ def handle(parsed: dict, ctx: dict, memory: dict) -> str:
 
     # ── Recalibrate microphone ────────────────────────────────
     if intent == "recalibrate_mic":
-        from core.voice_input import recalibrate
+        from core.voice_input_v2 import recalibrate
         recalibrate()
         return f"Microphone recalibrated, {settings.USER_NAME}."
+
+    # ── Phase A: List routines ────────────────────────────────
+    if intent == Intent.LIST_ROUTINES:
+        return list_routines()
+
+    # ── Phase A: Save routine ─────────────────────────────────
+    if intent == Intent.SAVE_ROUTINE:
+        name = target or raw
+        if " with " in raw.lower():
+            parts      = raw.lower().split(" with ", 1)
+            name       = parts[0]
+            for word in ["save routine called", "create routine called",
+                         "save routine named", "make routine called"]:
+                name   = name.replace(word, "").strip()
+            action_str = parts[1]
+            actions    = [a.strip() for a in action_str.split(",")]
+        else:
+            actions    = []
+
+        if actions:
+            return save_routine(name, actions)
+        return (
+            f"What actions should the '{name}' routine include, "
+            f"{settings.USER_NAME}? "
+            f"For example: 'save routine called morning with "
+            f"open chrome, open vs code'"
+        )
+
+    # ── Phase A: Run routine ──────────────────────────────────
+    if intent == Intent.RUN_ROUTINE:
+        actions = get_routine(target)
+        if actions:
+            results = []
+            for action in actions:
+                action = action.strip().lower()
+                if action.startswith("open "):
+                    app_name = action[5:].strip()
+                    ok, msg  = open_application(app_name)
+                    results.append(msg)
+                elif action.startswith("search "):
+                    query  = action[7:].strip()
+                    _, msg = search_web(query)
+                    results.append(msg)
+                else:
+                    results.append(f"Skipping unknown action: {action}")
+            return (
+                f"Running routine '{target}', {settings.USER_NAME}. "
+                + " ".join(results)
+            )
+        return (
+            f"I couldn't find a routine named '{target}', "
+            f"{settings.USER_NAME}."
+        )
 
     # ── Default: ask AI ───────────────────────────────────────
     _api_cooldown()
@@ -225,7 +295,6 @@ def handle(parsed: dict, ctx: dict, memory: dict) -> str:
     log_conversation(raw, response, intent)
     add_conversation_summary(memory, raw, response)
 
-    # Extract and store facts every 3rd AI turn
     if len(history) % 6 == 0:
         count = extract_and_store(raw, response)
         if count > 0:
@@ -241,12 +310,14 @@ def main():
     print(Fore.YELLOW + get_startup_banner() + Style.RESET_ALL)
     mode = "Text-only" if settings.TEXT_ONLY_MODE else "Voice"
     print(Fore.CYAN + f"[{mode} mode | Type 'goodbye' to exit]\n" + Style.RESET_ALL)
+    # Start overlay dashboard
+    if not settings.TEXT_ONLY_MODE:
+        start_dashboard()
 
     memory = load_memory()
     update_last_seen(memory)
     ctx = get_full_context()
 
-    # Greeting — blocking, no threading conflicts
     greeting = get_greeting(ctx)
     status   = get_status_comment(ctx)
     alfred_speak(f"{greeting} {status}".strip())
@@ -268,6 +339,12 @@ def main():
             alfred_speak(response)
 
             if parsed["intent"] == Intent.FAREWELL:
+                # Analyze workflows before shutting down
+                suggestion = analyze_workflow(
+                    memory.get("workflow_history", [])
+                )
+                if suggestion:
+                    alfred_speak(suggestion)
                 log_action("shutdown", "Graceful exit")
                 break
 

@@ -1,175 +1,213 @@
 # ============================================================
 # Alfred Wayne OS - Command Parser
-# Phase B: Added coding assistant intents.
+# Fixed: routine check now happens before terminal command check
+# so "run morning" triggers routine, not terminal.
 # ============================================================
 
 import re
 
 
 class Intent:
-    OPEN_APP     = "open_app"
-    OPEN_WEBSITE = "open_website"
-    SEARCH_WEB   = "search_web"
-    CREATE_FILE  = "create_file"
-    TIME_QUERY   = "time_query"
-    SYSTEM_INFO  = "system_info"
-    FAREWELL     = "farewell"
-    GRATITUDE    = "gratitude"
-    # Phase B — coding intents
-    RUN_COMMAND  = "run_command"
-    READ_FILE    = "read_file"
+    OPEN_APP       = "open_app"
+    OPEN_WEBSITE   = "open_website"
+    SEARCH_WEB     = "search_web"
+    CREATE_FILE    = "create_file"
+    TIME_QUERY     = "time_query"
+    SYSTEM_INFO    = "system_info"
+    FAREWELL       = "farewell"
+    GRATITUDE      = "gratitude"
+    RUN_COMMAND    = "run_command"
+    READ_FILE      = "read_file"
     SHOW_STRUCTURE = "show_structure"
-    AI_QUERY     = "ai_query"
-    
+    RUN_ROUTINE    = "run_routine"
+    SAVE_ROUTINE   = "save_routine"
+    LIST_ROUTINES  = "list_routines"
+    AI_QUERY       = "ai_query"
+
 
 def _contains(text: str, keyword: str) -> bool:
-    """Whole-word match — prevents 'ram' firing inside 'programming'."""
     return bool(re.search(rf"\b{re.escape(keyword)}\b", text))
 
 
+def _extract(pattern: str, text: str):
+    m = re.search(pattern, text)
+    return m.group(1).strip() if m else None
+
+
 def parse_command(text: str) -> dict:
-    t      = text.lower().strip()
+    # Strip trailing punctuation Whisper adds
+    t      = re.sub(r'[.!?,;]+$', '', text.lower().strip())
     result = {"intent": Intent.AI_QUERY, "target": None, "raw": text}
 
     # ── Farewell ─────────────────────────────────────────────
-    farewell_keywords = [
+    if any(_contains(t, k) for k in [
         "goodbye", "good night", "goodnight",
         "farewell", "exit", "close alfred", "quit"
-    ]
-    if any(_contains(t, k) for k in farewell_keywords):
+    ]):
         result["intent"] = Intent.FAREWELL
         return result
 
     # ── Gratitude ────────────────────────────────────────────
-    gratitude_keywords = [
-        "thank you", "thanks", "cheers",
-        "well done", "good job"
-    ]
-    if any(_contains(t, k) for k in gratitude_keywords):
+    if any(_contains(t, k) for k in [
+        "thank you", "thanks", "cheers", "well done", "good job"
+    ]):
         result["intent"] = Intent.GRATITUDE
         return result
 
     # ── Time / Date ──────────────────────────────────────────
-    time_keywords = [
+    if any(k in t for k in [
         "what time", "what's the time", "what day",
-        "what date", "today's date", "what year"
-    ]
-    if any(k in t for k in time_keywords):
+        "what date", "today's date", "what year",
+        "current time", "current date",
+    ]):
         result["intent"] = Intent.TIME_QUERY
         return result
 
     # ── System Info ──────────────────────────────────────────
-    system_multiword  = ["memory usage", "system info", "computer status"]
-    system_singleword = ["battery", "ram", "cpu", "uptime"]
-    internet_phrases  = [
-        "am i online", "are we online", "internet status",
-        "check internet", "internet connection", "are we connected"
-    ]
     if (
-        any(k in t for k in system_multiword)
-        or any(_contains(t, k) for k in system_singleword)
-        or any(k in t for k in internet_phrases)
+        any(k in t for k in ["memory usage", "system info", "computer status"])
+        or any(_contains(t, k) for k in ["battery", "ram", "cpu", "uptime"])
+        or any(k in t for k in [
+            "am i online", "internet status", "check internet",
+            "internet connection", "are we connected"
+        ])
     ):
         result["intent"] = Intent.SYSTEM_INFO
         return result
 
-    # ── Phase B: Run terminal command ────────────────────────
-    run_patterns = [
-        r"^run (.+)",
-        r"^execute (.+)",
-        r"^terminal (.+)",
-        r"^run command (.+)",
-        r"^run this[:\s]+(.+)",
+    # ── List routines ─────────────────────────────────────────
+    if any(k in t for k in [
+        "list routines", "show routines", "my routines",
+        "what routines", "list my routines", "show my routines"
+    ]):
+        result["intent"] = Intent.LIST_ROUTINES
+        return result
+
+    # ── Save routine ──────────────────────────────────────────
+    save_pat = _extract(
+        r"(?:save|create|make) (?:a )?routine (?:called |named )?(.+)", t
+    )
+    if save_pat:
+        result["intent"] = Intent.SAVE_ROUTINE
+        result["target"] = save_pat
+        return result
+
+    # ── Run routine (BEFORE terminal command check) ───────────
+    # Check all these trigger phrases for routines
+    routine_triggers = [
+        r"^(?:run|start|execute|launch) (?:my )?routine (.+)",
+        r"^(?:run|start) (?:the )?(.+?) routine$",
+        r"^(?:run|start|launch) (.+)",   # broad — checked against saved routines
     ]
-    for pat in run_patterns:
-        m = re.search(pat, t)
-        if m:
+    for pat in routine_triggers:
+        candidate = _extract(pat, t)
+        if candidate:
+            # Only treat as routine if it actually exists
+            from core.workflow_engine import get_routine
+            if get_routine(candidate) is not None:
+                result["intent"] = Intent.RUN_ROUTINE
+                result["target"] = candidate
+                return result
+
+    # ── Run terminal command ──────────────────────────────────
+    for pat in [
+        r"^run command (.+)",
+        r"^terminal (.+)",
+        r"^execute command (.+)",
+    ]:
+        target = _extract(pat, t)
+        if target:
             result["intent"] = Intent.RUN_COMMAND
-            result["target"] = m.group(1).strip()
+            result["target"] = target
             return result
 
-    # ── Phase B: Read a file ─────────────────────────────────
-    read_patterns = [
+    # ── Read file ─────────────────────────────────────────────
+    for pat in [
         r"^read (?:the )?file (.+)",
-        r"^open (?:the )?file (.+)",
         r"^show (?:me )?(?:the )?(?:contents of )?(?:file )?(.+\.\w+)",
         r"^look at (.+\.\w+)",
-    ]
-    for pat in read_patterns:
-        m = re.search(pat, t)
-        if m:
+    ]:
+        target = _extract(pat, t)
+        if target:
             result["intent"] = Intent.READ_FILE
-            result["target"] = m.group(1).strip()
+            result["target"] = target
             return result
 
-    # ── Phase B: Show project structure ──────────────────────
-    structure_keywords = [
+    # ── Show project structure ────────────────────────────────
+    if any(k in t for k in [
         "project structure", "folder structure", "file structure",
-        "show structure", "show files", "what files",
-        "list files", "directory structure"
-    ]
-    if any(k in t for k in structure_keywords):
+        "show structure", "show files", "list files", "directory structure"
+    ]):
         result["intent"] = Intent.SHOW_STRUCTURE
         return result
-    
-    # ── Recalibrate microphone ────────────────────────────────
-    if any(k in t for k in ["recalibrate", "calibrate mic", "calibrate microphone", "fix microphone"]):
+
+    # ── Recalibrate mic ───────────────────────────────────────
+    if any(k in t for k in [
+        "recalibrate", "calibrate mic",
+        "calibrate microphone", "fix microphone"
+    ]):
         result["intent"] = "recalibrate_mic"
         return result
 
+    # ── Open Website (before app) ─────────────────────────────
+    for pat in [
+        r"^go to (.+)",
+        r"^navigate to (.+)",
+        r"^open (.+\.(?:com|org|net|io|co|uk))",
+        r"^take me to (.+)",
+    ]:
+        target = _extract(pat, t)
+        if target:
+            result["intent"] = Intent.OPEN_WEBSITE
+            result["target"] = target
+            return result
+
     # ── Open Application ─────────────────────────────────────
-    open_app_patterns = [
-        r"^open (?:the )?(.+?)(?:\s+app)?$",
+    app_patterns = [
+        r"^open (?:the )?(.+?)(?:\s+app|browser|for me)?$",
         r"^launch (.+?)(?:\s+app)?$",
         r"^start (.+?)$",
+        r"^can you open (?:the )?(.+?)(?:\s+(?:app|browser|for me))?$",
+        r"^please open (?:the )?(.+?)(?:\s+app)?$",
+        r"^open up (?:the )?(.+?)(?:\s+app)?$",
+        r"^could you open (?:the )?(.+?)(?:\s+(?:app|browser|for me))?$",
+        r"^pull up (.+?)(?:\s+app)?$",
+        r"^i want to open (.+?)(?:\s+app)?$",
     ]
-    for pat in open_app_patterns:
-        m = re.search(pat, t)
-        if m:
-            target = m.group(1).strip()
-            if "." not in target and "http" not in target:
+    for pat in app_patterns:
+        target = _extract(pat, t)
+        if target and "." not in target and "http" not in target:
+            target = re.sub(
+                r"\s*(for me|please|now|browser|app)$", "", target
+            ).strip()
+            if target:
                 result["intent"] = Intent.OPEN_APP
                 result["target"] = target
                 return result
 
-    # ── Open Website ─────────────────────────────────────────
-    open_site_patterns = [
-        r"^go to (.+)",
-        r"^navigate to (.+)",
-        r"^open (.+\.(?:com|org|net|io|co|uk))",
-    ]
-    for pat in open_site_patterns:
-        m = re.search(pat, t)
-        if m:
-            result["intent"] = Intent.OPEN_WEBSITE
-            result["target"] = m.group(1).strip()
-            return result
-
     # ── Web Search ───────────────────────────────────────────
-    search_patterns = [
+    for pat in [
         r"^search (?:for )?(.+)",
         r"^google (.+)",
         r"^look up (.+)",
-    ]
-    for pat in search_patterns:
-        m = re.search(pat, t)
-        if m:
+        r"^find (?:information (?:about|on) )?(.+)",
+    ]:
+        target = _extract(pat, t)
+        if target:
             result["intent"] = Intent.SEARCH_WEB
-            result["target"] = m.group(1).strip()
+            result["target"] = target
             return result
 
     # ── Create File ──────────────────────────────────────────
-    create_patterns = [
+    for pat in [
         r"^create (?:a )?(?:new )?(?:text )?file (?:called |named )?(.+)",
         r"^new file (.+)",
         r"^make (?:a )?(?:new )?file (?:called |named )?(.+)",
-    ]
-    for pat in create_patterns:
-        m = re.search(pat, t)
-        if m:
+    ]:
+        target = _extract(pat, t)
+        if target:
             result["intent"] = Intent.CREATE_FILE
-            result["target"] = m.group(1).strip()
+            result["target"] = target
             return result
 
-    # ── Default: send to Gemini/Groq ─────────────────────────
     return result

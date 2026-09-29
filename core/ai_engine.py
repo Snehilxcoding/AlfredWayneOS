@@ -1,8 +1,8 @@
 # ============================================================
 # Alfred Wayne OS - AI Engine
-# Primary:  Groq API (Llama 3.3 70B) — free, fast, generous
-# Fallback: Gemini 2.0 Flash — if Groq fails
-# Updated:  google.generativeai → google.genai (new SDK)
+# Primary:  Groq API (Llama 3.1 8B Instant) — fast, high throughput
+# Fallback: Gemini 2.0 Flash Lite — fallback reasoning
+# Backup:   Smart Butler Knowledge Engine (instant, non-blocking)
 # ============================================================
 
 import os
@@ -42,11 +42,11 @@ What Alfred knows about {USER_NAME} (long-term memory):
 """
 
 
-# ── Groq call ────────────────────────────────────────────────
+# ── Groq Call ────────────────────────────────────────────────
 
 def _ask_groq(messages: list) -> str:
     from groq import Groq
-    client   = Groq(api_key=GROQ_API_KEY)
+    client = Groq(api_key=GROQ_API_KEY, timeout=6.0)
     response = client.chat.completions.create(
         model=GROQ_MODEL,
         messages=messages,
@@ -56,7 +56,7 @@ def _ask_groq(messages: list) -> str:
     return response.choices[0].message.content.strip()
 
 
-# ── Gemini call ──────────────────────────────────────────────
+# ── Gemini Call ──────────────────────────────────────────────
 
 def _ask_gemini(messages: list, system_prompt: str) -> str:
     from google import genai
@@ -64,12 +64,10 @@ def _ask_gemini(messages: list, system_prompt: str) -> str:
 
     client = genai.Client(api_key=GEMINI_API_KEY)
 
-    # Build conversation contents (exclude system message)
     contents = []
     for msg in messages:
         if msg["role"] == "system":
             continue
-        # Gemini uses "model" instead of "assistant"
         role = "model" if msg["role"] == "assistant" else "user"
         contents.append(
             types.Content(
@@ -90,88 +88,77 @@ def _ask_gemini(messages: list, system_prompt: str) -> str:
     return response.text.strip()
 
 
-# ── Retry wrappers ───────────────────────────────────────────
-
-def _try_groq(messages: list, max_retries: int = 3) -> str:
-    """Attempts Groq with retries. Returns text or None."""
-    if not GROQ_API_KEY:
+def _try_groq(messages: list) -> str:
+    """Fast single-pass attempt for Groq without blocking sleeps."""
+    if not GROQ_API_KEY or not GROQ_API_KEY.strip():
+        return None
+    try:
+        return _ask_groq(messages)
+    except Exception as e:
+        print(f"[Alfred AI] Groq attempt note: {e}")
         return None
 
-    wait_times = [5, 10, 20]
 
-    for attempt in range(max_retries):
-        try:
-            return _ask_groq(messages)
-
-        except Exception as e:
-            err = str(e).lower()
-
-            if "429" in err or "rate" in err or "quota" in err:
-                if attempt < max_retries - 1:
-                    wait = wait_times[attempt]
-                    print(f"[Alfred] Groq rate limit. Waiting {wait}s "
-                          f"(attempt {attempt + 1}/{max_retries})...")
-                    time.sleep(wait)
-                    continue
-                return None
-
-            if "401" in err or "invalid" in err or "api_key" in err:
-                print(f"[Alfred] Groq auth error: {e}")
-                return None
-
-            print(f"[Alfred] Groq error: {e}")
-            return None
-
-    return None
-
-
-def _try_gemini(messages: list, system_prompt: str, max_retries: int = 3) -> str:
-    """Attempts Gemini with retries. Returns text or None."""
-    if not GEMINI_API_KEY:
+def _try_gemini(messages: list, system_prompt: str) -> str:
+    """Fast single-pass attempt for Gemini without blocking sleeps."""
+    if not GEMINI_API_KEY or not GEMINI_API_KEY.strip():
+        return None
+    try:
+        return _ask_gemini(messages, system_prompt)
+    except Exception as e:
+        print(f"[Alfred AI] Gemini attempt note: {e}")
         return None
 
-    wait_times = [10, 20, 30]
 
-    for attempt in range(max_retries):
-        try:
-            return _ask_gemini(messages, system_prompt)
-
-        except Exception as e:
-            err = str(e).lower()
-
-            if "429" in err or "quota" in err or "exhausted" in err:
-                if attempt < max_retries - 1:
-                    wait = wait_times[attempt]
-                    print(f"[Alfred] Gemini quota hit. Waiting {wait}s "
-                          f"(attempt {attempt + 1}/{max_retries})...")
-                    time.sleep(wait)
-                    continue
-                return None
-
-            if "api_key" in err or "authentication" in err:
-                print(f"[Alfred] Gemini auth error: {e}")
-                return None
-
-            print(f"[Alfred] Gemini error: {e}")
-            return None
-
-    return None
-
+# ── Smart Butler Knowledge Engine ────────────────────────────
 
 def _fallback_butler_response(user_message: str) -> str:
     msg = user_message.lower().strip()
+
+    # Identity & Self Queries
+    if any(w in msg for w in ["who are you", "tell me about yourself", "your name", "what are you", "who created you", "what is alfred"]):
+        return (
+            f"I am Alfred, your personal AI butler and operating companion, {USER_NAME}. "
+            f"Modeled in the tradition of Gotham's finest, I manage system telemetry, monitor memory contexts, "
+            f"execute workflows, and provide intelligent assistance at your request."
+        )
+
+    # Capabilities & Features
+    if any(w in msg for w in ["what can you do", "help", "capabilities", "features", "commands", "functions"]):
+        return (
+            f"I am fully equipped to assist you with a wide array of tasks, {USER_NAME}:\n"
+            f"• Real-time system telemetry & resource monitoring\n"
+            f"• Persistent long-term memory & preference tracking\n"
+            f"• Interactive speech recognition & British voice synthesis\n"
+            f"• Natural language command parsing & automated workflow routines\n"
+            f"• Generative AI reasoning via Groq Llama 3.1 & Gemini 2.0 Flash engines."
+        )
+
+    # Status & Wellness
+    if any(w in msg for w in ["how are you", "how do you do", "status", "are you okay", "feeling"]):
+        return f"All systems are operating at peak nominal parameters, {USER_NAME}. Thank you for inquiring."
+
+    # Greetings
     if any(w in msg for w in ["hello", "hi", "hey", "greetings", "good morning", "good afternoon", "good evening"]):
-        return f"Good day, {USER_NAME}. I am standing by to assist you."
-    if any(w in msg for w in ["who are you", "your name", "what are you"]):
-        return f"I am Alfred, your personal AI butler and operating companion, {USER_NAME}."
-    if any(w in msg for w in ["what can you do", "help", "capabilities", "features"]):
-        return f"I am equipped to manage system telemetry, monitor memory contexts, execute automated routines, and process complex AI queries, {USER_NAME}."
-    if any(w in msg for w in ["how are you", "how do you do"]):
-        return f"All systems are functioning nominally, {USER_NAME}. Thank you for asking."
-    return f"At your service, {USER_NAME}. I am operating in cloud interface mode. To enable full generative AI reasoning on Render, please attach your GROQ_API_KEY or GEMINI_API_KEY environment variable in the Render Dashboard."
+        return f"Good day, {USER_NAME}. I am standing by to assist you. What shall we tackle today?"
+
+    # Gratitude
+    if any(w in msg for w in ["thank", "thanks", "cheers", "appreciate"]):
+        return f"Always a pleasure to be of service, {USER_NAME}."
+
+    # Farewell
+    if any(w in msg for w in ["bye", "goodnight", "good night", "exit", "farewell"]):
+        return f"Good night, {USER_NAME}. I shall remain vigilant in the background."
+
+    # Default Butler Response
+    return (
+        f"Indeed, {USER_NAME}. I have received your request regarding '{user_message}'. "
+        f"I am currently operating in cloud butler mode. To enable deep multi-turn generative AI reasoning on Render, "
+        f"please attach your GROQ_API_KEY or GEMINI_API_KEY environment variable in the Render Dashboard."
+    )
 
 
-# ── Main entry point ─────────────────────────────────────────
+# ── Main Entry Point ─────────────────────────────────────────
 
 def ask_alfred(
     user_message: str,
@@ -181,31 +168,26 @@ def ask_alfred(
     history: list = None,
 ) -> str:
     """
-    Main AI call. Tries Groq first, falls back to Gemini.
-    Both have automatic retry with backoff.
+    Main AI call. Tries Groq first, falls back to Gemini, then falls back to Smart Butler Engine.
     """
     system_prompt = build_system_prompt(
         context_summary, memory_context, longterm_context
     )
 
-    # Build message list
     messages = [{"role": "system", "content": system_prompt}]
     if history:
         messages.extend(history[-20:])
     messages.append({"role": "user", "content": user_message})
 
-    # ── Try Groq first ───────────────────────────────────────
-    if GROQ_API_KEY:
-        result = _try_groq(messages)
-        if result:
-            return result
-        print("[Alfred] Groq unavailable. Switching to Gemini...")
+    # 1. Try Groq
+    res = _try_groq(messages)
+    if res:
+        return res
 
-    # ── Fall back to Gemini ──────────────────────────────────
-    if GEMINI_API_KEY:
-        result = _try_gemini(messages, system_prompt)
-        if result:
-            return result
+    # 2. Try Gemini
+    res = _try_gemini(messages, system_prompt)
+    if res:
+        return res
 
-    # ── Fallback Butler Response ──────────────────────────────
+    # 3. Smart Butler Knowledge Engine
     return _fallback_butler_response(user_message)

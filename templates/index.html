@@ -751,33 +751,55 @@
             hudState = "thinking";
             showTypingIndicator();
 
+            function getContextualFallback(userQuery) {
+                const lower = userQuery.toLowerCase().trim();
+                if (lower.includes('who are you') || lower.includes('about yourself') || lower.includes('your name')) {
+                    return `I am Alfred, your personal AI butler and operating companion, Master Snehil. Modeled in the tradition of Gotham's finest, I manage system telemetry, monitor memory contexts, execute workflows, and provide intelligent assistance.`;
+                }
+                if (lower.includes('capabilities') || lower.includes('can you do') || lower.includes('help') || lower.includes('features')) {
+                    return `I am equipped to manage system telemetry, monitor memory contexts, execute automated routines, track long-term preferences, process natural language commands, and run complex AI queries, Master Snehil.`;
+                }
+                if (lower.includes('status') || lower.includes('how are you')) {
+                    return `All systems are operating at peak nominal parameters, Master Snehil. Thank you for asking.`;
+                }
+                if (lower.includes('time') || lower.includes('date') || lower.includes('clock')) {
+                    return `It is currently ${new Date().toLocaleTimeString()} on ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}, Master Snehil.`;
+                }
+                return `At your service, Master Snehil. I am standing by. To enable multi-turn generative AI reasoning on Render, please attach your GROQ_API_KEY or GEMINI_API_KEY in the Render Dashboard.`;
+            }
+
             try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+
                 const res = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: msg })
+                    body: JSON.stringify({ message: msg }),
+                    signal: controller.signal
                 });
+                clearTimeout(timeoutId);
 
                 removeTypingIndicator();
 
                 if (res.ok) {
                     const data = await res.json();
                     hudState = "speaking";
-                    const reply = data.response || "At your service, Master Snehil.";
+                    const reply = data.response || getContextualFallback(msg);
                     appendMessage('alfred', reply, data.timestamp);
                     speakText(reply);
                 } else {
                     hudState = "speaking";
-                    const fallbackMsg = `At your service, Master Snehil. Processing query: "${msg}". All systems operational.`;
-                    appendMessage('alfred', fallbackMsg);
-                    speakText(fallbackMsg);
+                    const reply = getContextualFallback(msg);
+                    appendMessage('alfred', reply);
+                    speakText(reply);
                 }
             } catch (err) {
                 removeTypingIndicator();
                 hudState = "speaking";
-                const fallbackMsg = `Indeed, Master Snehil. Alfred Wayne OS is online and standing by.`;
-                appendMessage('alfred', fallbackMsg);
-                speakText(fallbackMsg);
+                const reply = getContextualFallback(msg);
+                appendMessage('alfred', reply);
+                speakText(reply);
             }
         }
 

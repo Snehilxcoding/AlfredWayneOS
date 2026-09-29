@@ -51,31 +51,6 @@ LIVE :  https://alfred-wayne-os.onrender.com/
 5. Click **Create Web Service**.
 
 ---
-
-## 💻 Local Development
-
-### 1. Clone & Install Dependencies
-```bash
-git clone https://github.com/Snehilxcoding/AlfredWayneOS.git
-cd AlfredWayneOS
-pip install -r requirements.txt
-```
-
-### 2. Configure Environment Variables
-Create a `.env` file in the root directory:
-```env
-GROQ_API_KEY=your_groq_api_key
-GEMINI_API_KEY=your_gemini_api_key
-```
-
-### 3. Run Web Application
-```bash
-python web_app.py
-```
-Open `http://localhost:5000` in your web browser.
-
----
-
 ## 🛠️ Tech Stack
 
 - **Backend**: Python 3.11, Flask, Gunicorn

@@ -12,7 +12,7 @@
 
 Alfred Wayne OS is deployed live on Render! Access the interactive HUD and talk with Alfred directly from your web browser:
 
-👉 **[Launch Live Alfred Wayne OS Web App](https://alfredwayneos.onrender.com)** 👈
+LIVE :  https://alfred-wayne-os.onrender.com/
 
 ---
 

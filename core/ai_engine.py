@@ -17,8 +17,8 @@ GROQ_API_KEY   = os.getenv("GROQ_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # ── Models ───────────────────────────────────────────────────
-GROQ_MODEL   = "llama-3.3-70b-versatile"
-GEMINI_MODEL = "gemini-2.0-flash"
+GROQ_MODEL   = "llama-3.1-8b-instant"
+GEMINI_MODEL = "gemini-2.0-flash-lite"
 
 
 def build_system_prompt(context_summary: str, memory_context: str, longterm_context: str) -> str:

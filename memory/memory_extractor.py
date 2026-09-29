@@ -56,7 +56,7 @@ def _extract_via_groq(prompt: str) -> str:
     from groq import Groq
     client = Groq(api_key=GROQ_API_KEY)
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="llama-3.1-8b-instant",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.1,
         max_tokens=512,
@@ -69,7 +69,7 @@ def _extract_via_gemini(prompt: str) -> str:
     from google.genai import types
     client = genai.Client(api_key=GEMINI_API_KEY)
     response = client.models.generate_content(
-        model="gemini-2.0-flash",
+        model="gemini-2.0-flash-lite",
         contents=prompt,
         config=types.GenerateContentConfig(
             temperature=0.1,

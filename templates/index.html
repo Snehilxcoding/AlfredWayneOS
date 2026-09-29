@@ -3,22 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alfred Wayne OS — Autonomous AI Companion</title>
-    <meta name="description" content="Alfred Wayne OS - Web Interface and Live AI Assistant HUD">
+    <title>Alfred Wayne OS — Autonomous AI Operating Companion</title>
+    <meta name="description" content="Alfred Wayne OS - Next Generation AI Companion & HUD Dashboard">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #030712;
+            --bg-dark: #020617;
             --panel-bg: rgba(15, 23, 42, 0.75);
-            --panel-border: rgba(56, 189, 248, 0.2);
-            --cyan-glow: #38bdf8;
-            --cyan-accent: #00bfff;
+            --panel-border: rgba(56, 189, 248, 0.25);
+            --cyan-glow: #00f0ff;
+            --cyan-accent: #38bdf8;
             --amber-accent: #f97316;
             --green-accent: #10b981;
             --text-main: #f8fafc;
             --text-dim: #94a3b8;
+            --glass-glow: 0 0 25px rgba(0, 240, 255, 0.15);
         }
 
         * {
@@ -29,56 +30,66 @@
 
         body {
             font-family: 'Outfit', sans-serif;
-            background-color: var(--bg-color);
+            background-color: var(--bg-dark);
             color: var(--text-main);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             overflow-x: hidden;
-            background-image: 
-                radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.12), transparent 50%),
-                radial-gradient(circle at 100% 100%, rgba(249, 115, 22, 0.08), transparent 40%);
+            position: relative;
+        }
+
+        /* Particle Background Canvas */
+        #bgCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
         }
 
         header {
-            padding: 1.25rem 2rem;
+            position: relative;
+            z-index: 10;
+            padding: 1.1rem 2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid var(--panel-border);
-            backdrop-filter: blur(12px);
-            background: rgba(3, 7, 18, 0.8);
-            position: sticky;
-            top: 0;
-            z-index: 100;
+            backdrop-filter: blur(16px);
+            background: rgba(2, 6, 23, 0.85);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
         }
 
         .brand {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.85rem;
         }
 
         .brand-logo {
-            width: 38px;
-            height: 38px;
+            width: 42px;
+            height: 42px;
             border-radius: 50%;
-            background: radial-gradient(circle, var(--cyan-glow) 0%, rgba(56, 189, 248, 0.1) 70%);
+            background: radial-gradient(circle, var(--cyan-glow) 0%, rgba(56, 189, 248, 0.15) 70%);
             border: 2px solid var(--cyan-glow);
-            box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.6);
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 800;
             color: #fff;
-            font-size: 1.1rem;
+            font-size: 1.25rem;
+            text-shadow: 0 0 10px var(--cyan-glow);
         }
 
         .brand-title {
-            font-size: 1.35rem;
-            font-weight: 700;
-            letter-spacing: 0.05em;
-            background: linear-gradient(135deg, #fff 0%, var(--cyan-glow) 100%);
+            font-size: 1.4rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            background: linear-gradient(135deg, #ffffff 0%, var(--cyan-glow) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -86,23 +97,24 @@
         .status-badge {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            padding: 0.4rem 0.9rem;
-            border-radius: 20px;
-            background: rgba(16, 185, 129, 0.1);
-            border: 1px solid rgba(16, 185, 129, 0.3);
+            gap: 0.6rem;
+            padding: 0.45rem 1rem;
+            border-radius: 24px;
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.4);
             font-size: 0.85rem;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--green-accent);
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
         }
 
         .status-dot {
-            width: 8px;
-            height: 8px;
+            width: 9px;
+            height: 9px;
             border-radius: 50%;
             background-color: var(--green-accent);
-            box-shadow: 0 0 8px var(--green-accent);
-            animation: pulse 2s infinite;
+            box-shadow: 0 0 10px var(--green-accent);
+            animation: pulse 1.8s infinite;
         }
 
         @keyframes pulse {
@@ -111,17 +123,19 @@
         }
 
         main {
+            position: relative;
+            z-index: 5;
             flex: 1;
             display: grid;
             grid-template-columns: 380px 1fr;
             gap: 1.5rem;
             padding: 1.5rem;
-            max-width: 1600px;
+            max-width: 1650px;
             margin: 0 auto;
             width: 100%;
         }
 
-        @media (max-width: 1024px) {
+        @media (max-width: 1080px) {
             main {
                 grid-template-columns: 1fr;
             }
@@ -130,94 +144,133 @@
         .hud-panel {
             background: var(--panel-bg);
             border: 1px solid var(--panel-border);
-            border-radius: 16px;
-            backdrop-filter: blur(16px);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
             padding: 1.5rem;
             display: flex;
             flex-direction: column;
             align-items: center;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            box-shadow: var(--glass-glow), 0 10px 40px rgba(0, 0, 0, 0.5);
             gap: 1.25rem;
         }
 
         .hud-canvas-container {
             position: relative;
-            width: 300px;
-            height: 300px;
+            width: 310px;
+            height: 310px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
         canvas#hudCanvas {
-            width: 300px;
-            height: 300px;
+            width: 310px;
+            height: 310px;
         }
 
         .hud-state-label {
             position: absolute;
             font-family: 'Fira Code', monospace;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             color: var(--cyan-glow);
-            letter-spacing: 0.15em;
+            letter-spacing: 0.18em;
             text-transform: uppercase;
-            font-weight: 600;
-            text-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+            font-weight: 700;
+            text-shadow: 0 0 12px rgba(0, 240, 255, 0.7);
         }
 
         .telemetry-grid {
             width: 100%;
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 0.75rem;
+            gap: 0.85rem;
             font-family: 'Fira Code', monospace;
-            font-size: 0.8rem;
         }
 
         .telemetry-card {
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 0.75rem;
-            border-radius: 10px;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 0.85rem;
+            border-radius: 12px;
+            transition: border-color 0.3s;
+        }
+
+        .telemetry-card:hover {
+            border-color: var(--cyan-glow);
         }
 
         .telemetry-label {
             color: var(--text-dim);
-            font-size: 0.7rem;
+            font-size: 0.72rem;
             text-transform: uppercase;
-            margin-bottom: 0.25rem;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.3rem;
         }
 
         .telemetry-val {
             color: var(--cyan-glow);
-            font-weight: 600;
-            font-size: 1rem;
+            font-weight: 700;
+            font-size: 1.05rem;
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
         }
 
         .chat-panel {
             background: var(--panel-bg);
             border: 1px solid var(--panel-border);
-            border-radius: 16px;
-            backdrop-filter: blur(16px);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
             display: flex;
             flex-direction: column;
             height: calc(100vh - 120px);
-            min-height: 550px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            min-height: 600px;
+            box-shadow: var(--glass-glow), 0 10px 40px rgba(0, 0, 0, 0.5);
             overflow: hidden;
         }
 
         .chat-header {
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 1.1rem 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            background: rgba(15, 23, 42, 0.8);
         }
 
         .chat-title {
-            font-size: 1.1rem;
-            font-weight: 600;
+            font-size: 1.15rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.6rem 1.5rem;
+            background: rgba(2, 6, 23, 0.5);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .chip-btn {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            color: var(--text-main);
+            padding: 0.35rem 0.85rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .chip-btn:hover {
+            background: rgba(56, 189, 248, 0.2);
+            border-color: var(--cyan-glow);
+            color: #fff;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
         }
 
         .chat-messages {
@@ -232,8 +285,14 @@
 
         .msg-row {
             display: flex;
-            gap: 0.75rem;
+            gap: 0.85rem;
             max-width: 85%;
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .msg-row.user {
@@ -246,91 +305,118 @@
         }
 
         .avatar {
-            width: 34px;
-            height: 34px;
+            width: 38px;
+            height: 38px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 700;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             flex-shrink: 0;
         }
 
         .avatar.alfred {
-            background: rgba(56, 189, 248, 0.2);
-            border: 1px solid var(--cyan-glow);
+            background: rgba(0, 240, 255, 0.15);
+            border: 1.5px solid var(--cyan-glow);
             color: var(--cyan-glow);
+            box-shadow: 0 0 12px rgba(0, 240, 255, 0.3);
         }
 
         .avatar.user {
-            background: rgba(249, 115, 22, 0.2);
-            border: 1px solid var(--amber-accent);
+            background: rgba(249, 115, 22, 0.15);
+            border: 1.5px solid var(--amber-accent);
             color: var(--amber-accent);
+            box-shadow: 0 0 12px rgba(249, 115, 22, 0.3);
         }
 
         .bubble {
-            background: rgba(30, 41, 59, 0.7);
+            background: rgba(30, 41, 59, 0.75);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            padding: 0.85rem 1.15rem;
-            border-radius: 14px;
-            line-height: 1.5;
-            font-size: 0.95rem;
+            padding: 0.95rem 1.25rem;
+            border-radius: 16px;
+            line-height: 1.55;
+            font-size: 0.98rem;
             position: relative;
         }
 
         .msg-row.alfred .bubble {
             border-top-left-radius: 2px;
-            border-color: rgba(56, 189, 248, 0.25);
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.6) 100%);
+            border-color: rgba(56, 189, 248, 0.3);
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.75) 100%);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
         }
 
         .msg-row.user .bubble {
             border-top-right-radius: 2px;
-            border-color: rgba(249, 115, 22, 0.3);
-            background: rgba(30, 41, 59, 0.85);
+            border-color: rgba(249, 115, 22, 0.35);
+            background: rgba(30, 41, 59, 0.9);
         }
 
         .timestamp {
-            font-size: 0.7rem;
+            font-size: 0.72rem;
             color: var(--text-dim);
             margin-top: 0.35rem;
             font-family: 'Fira Code', monospace;
         }
 
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.5rem 0.8rem;
+        }
+
+        .typing-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--cyan-glow);
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 100% { transform: translateY(0); opacity: 0.4; }
+            50% { transform: translateY(-5px); opacity: 1; }
+        }
+
         .chat-input-bar {
             padding: 1.25rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
             display: flex;
-            gap: 0.75rem;
-            background: rgba(15, 23, 42, 0.9);
+            gap: 0.85rem;
+            background: rgba(15, 23, 42, 0.95);
         }
 
         input[type="text"] {
             flex: 1;
-            background: rgba(30, 41, 59, 0.8);
+            background: rgba(30, 41, 59, 0.85);
             border: 1px solid var(--panel-border);
-            border-radius: 10px;
-            padding: 0.85rem 1.1rem;
+            border-radius: 12px;
+            padding: 0.9rem 1.2rem;
             color: #fff;
             font-family: 'Outfit', sans-serif;
-            font-size: 0.95rem;
+            font-size: 1rem;
             outline: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            transition: all 0.25s;
         }
 
         input[type="text"]:focus {
             border-color: var(--cyan-glow);
-            box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+            box-shadow: 0 0 16px rgba(0, 240, 255, 0.25);
         }
 
         .btn {
             background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
             color: #fff;
             border: none;
-            border-radius: 10px;
-            padding: 0 1.5rem;
-            font-weight: 600;
+            border-radius: 12px;
+            padding: 0 1.6rem;
+            font-weight: 700;
+            font-size: 0.95rem;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -339,38 +425,48 @@
         }
 
         .btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 14px rgba(56, 189, 248, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 18px rgba(0, 240, 255, 0.4);
         }
 
         .btn-icon {
             background: transparent;
             border: 1px solid var(--panel-border);
             color: var(--cyan-glow);
-            width: 44px;
-            height: 44px;
-            border-radius: 10px;
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.25s;
         }
 
         .btn-icon:hover {
-            background: rgba(56, 189, 248, 0.15);
+            background: rgba(56, 189, 248, 0.2);
             border-color: var(--cyan-glow);
+            box-shadow: 0 0 12px rgba(0, 240, 255, 0.3);
         }
 
         .btn-icon.active {
-            background: rgba(249, 115, 22, 0.2);
+            background: rgba(249, 115, 22, 0.25);
             border-color: var(--amber-accent);
             color: var(--amber-accent);
-            box-shadow: 0 0 10px rgba(249, 115, 22, 0.4);
+            box-shadow: 0 0 15px rgba(249, 115, 22, 0.5);
+            animation: pulseMic 1.5s infinite;
+        }
+
+        @keyframes pulseMic {
+            0%, 100% { box-shadow: 0 0 15px rgba(249, 115, 22, 0.5); }
+            50% { box-shadow: 0 0 25px rgba(249, 115, 22, 0.8); }
         }
     </style>
 </head>
 <body>
+    <!-- Background Particles -->
+    <canvas id="bgCanvas"></canvas>
+
     <header>
         <div class="brand">
             <div class="brand-logo">A</div>
@@ -386,7 +482,7 @@
         <!-- HUD Telemetry Panel -->
         <section class="hud-panel">
             <div class="hud-canvas-container">
-                <canvas id="hudCanvas" width="300" height="300"></canvas>
+                <canvas id="hudCanvas" width="310" height="310"></canvas>
                 <div class="hud-state-label" id="hudStateLabel">STANDBY</div>
             </div>
 
@@ -413,17 +509,32 @@
         <!-- Main Chat Console -->
         <section class="chat-panel">
             <div class="chat-header">
-                <div class="chat-title">Interactive Console</div>
-                <div style="font-family: 'Fira Code', monospace; font-size: 0.8rem; color: var(--text-dim);" id="userGreeting">
+                <div class="chat-title">
+                    <svg width="20" height="20" fill="none" stroke="var(--cyan-glow)" stroke-width="2" viewBox="0 0 24 24">
+                        <polyline points="4 17 10 11 4 5"></polyline>
+                        <line x1="12" y1="19" x2="20" y2="19"></line>
+                    </svg>
+                    Interactive Console
+                </div>
+                <div style="font-family: 'Fira Code', monospace; font-size: 0.82rem; color: var(--text-dim);" id="userGreeting">
                     Master Snehil
                 </div>
+            </div>
+
+            <!-- Quick Actions Bar -->
+            <div class="quick-actions">
+                <button class="chip-btn" onclick="sendQuickPrompt('What is the time right now?')">⚡ Time & Date</button>
+                <button class="chip-btn" onclick="sendQuickPrompt('System status report')">📊 System Status</button>
+                <button class="chip-btn" onclick="sendQuickPrompt('Who are you?')">🤖 Who are you?</button>
+                <button class="chip-btn" onclick="sendQuickPrompt('What can you do?')">💡 Capabilities</button>
+                <button class="chip-btn" onclick="clearConsole()">🧹 Clear Console</button>
             </div>
 
             <div class="chat-messages" id="chatMessages">
                 <div class="msg-row alfred">
                     <div class="avatar alfred">A</div>
                     <div>
-                        <div class="bubble">Good day, Master Snehil. Alfred Wayne OS is online and operational on Render. How may I be of assistance?</div>
+                        <div class="bubble">Good day, Master Snehil. Alfred Wayne OS is online and fully operational on Render. How may I be of assistance today?</div>
                         <div class="timestamp" id="initTime">--:--</div>
                     </div>
                 </div>
@@ -431,7 +542,7 @@
 
             <div class="chat-input-bar">
                 <button class="btn-icon" id="micBtn" title="Voice Input (Speech Recognition)">
-                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
                         <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
                         <line x1="12" y1="19" x2="12" y2="23"></line>
@@ -441,7 +552,7 @@
                 <input type="text" id="userInput" placeholder="Ask Alfred anything or type a command..." autocomplete="off">
                 <button class="btn" id="sendBtn">
                     <span>Send</span>
-                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <line x1="22" y1="2" x2="11" y2="13"></line>
                         <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                     </svg>
@@ -454,34 +565,89 @@
         // Set initial timestamp
         document.getElementById('initTime').innerText = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-        // HUD Canvas Animation
-        const canvas = document.getElementById('hudCanvas');
-        const ctx = canvas.getContext('2d');
+        // Background Particles Canvas
+        const bgCanvas = document.getElementById('bgCanvas');
+        const bgCtx = bgCanvas.getContext('2d');
+        let width = bgCanvas.width = window.innerWidth;
+        let height = bgCanvas.height = window.innerHeight;
+
+        window.addEventListener('resize', () => {
+            width = bgCanvas.width = window.innerWidth;
+            height = bgCanvas.height = window.innerHeight;
+        });
+
+        const particles = Array.from({ length: 45 }, () => ({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            r: Math.random() * 2 + 0.5,
+            dx: (Math.random() - 0.5) * 0.4,
+            dy: (Math.random() - 0.5) * 0.4,
+            alpha: Math.random() * 0.5 + 0.2
+        }));
+
+        function drawBackground() {
+            bgCtx.clearRect(0, 0, width, height);
+            particles.forEach(p => {
+                p.x += p.dx;
+                p.y += p.dy;
+                if (p.x < 0) p.x = width;
+                if (p.x > width) p.x = 0;
+                if (p.y < 0) p.y = height;
+                if (p.y > height) p.y = 0;
+
+                bgCtx.beginPath();
+                bgCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                bgCtx.fillStyle = `rgba(56, 189, 248, ${p.alpha})`;
+                bgCtx.fill();
+            });
+            requestAnimationFrame(drawBackground);
+        }
+        drawBackground();
+
+        // HUD Canvas Dual Arc Reactor Animation
+        const hudCanvas = document.getElementById('hudCanvas');
+        const ctx = hudCanvas.getContext('2d');
         const stateLabel = document.getElementById('hudStateLabel');
         let angle1 = 0, angle2 = 0, pulse = 0;
         let hudState = "standby"; // standby, listening, thinking, speaking
 
         function drawHUD() {
-            ctx.clearRect(0, 0, 300, 300);
-            const cx = 150, cy = 150;
-            angle1 += 0.01;
-            angle2 -= 0.008;
-            pulse += 0.04;
+            ctx.clearRect(0, 0, 310, 310);
+            const cx = 155, cy = 155;
+            angle1 += 0.012;
+            angle2 -= 0.009;
+            pulse += 0.05;
 
-            let mainColor = "#38bdf8"; // cyan
-            if (hudState === "listening") mainColor = "#00bfff";
+            let mainColor = "#00f0ff"; // cyan
+            if (hudState === "listening") mainColor = "#38bdf8";
             if (hudState === "thinking") mainColor = "#f97316"; // amber
             if (hudState === "speaking") mainColor = "#10b981"; // green
 
             stateLabel.innerText = hudState.toUpperCase();
             stateLabel.style.color = mainColor;
 
+            // Outer Tick Marks
+            for (let i = 0; i < 36; i++) {
+                const a = angle1 + (i * Math.PI / 18);
+                const r1 = 138, r2 = (i % 3 === 0) ? 146 : 142;
+                const x1 = cx + r1 * Math.cos(a);
+                const y1 = cy + r1 * Math.sin(a);
+                const x2 = cx + r2 * Math.cos(a);
+                const y2 = cy + r2 * Math.sin(a);
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.strokeStyle = mainColor;
+                ctx.lineWidth = (i % 3 === 0) ? 2 : 1;
+                ctx.stroke();
+            }
+
             // Rings definition
             const rings = [
-                { r: 125, count: 18, gap: 0.15, speed: angle1, color: mainColor, w: 2.5 },
-                { r: 105, count: 12, gap: 0.2, speed: angle2, color: "#f97316", w: 1.5 },
-                { r: 85, count: 14, gap: 0.15, speed: angle1 * 1.2, color: mainColor, w: 1.5 },
-                { r: 65, count: 8, gap: 0.25, speed: angle2 * 1.5, color: "rgba(56, 189, 248, 0.4)", w: 1 }
+                { r: 130, count: 18, gap: 0.12, speed: angle1, color: mainColor, w: 2.5 },
+                { r: 108, count: 12, gap: 0.18, speed: angle2, color: "#f97316", w: 1.8 },
+                { r: 86, count: 14, gap: 0.15, speed: angle1 * 1.3, color: mainColor, w: 1.8 },
+                { r: 64, count: 8, gap: 0.22, speed: angle2 * 1.6, color: "rgba(0, 240, 255, 0.4)", w: 1.2 }
             ];
 
             rings.forEach(ring => {
@@ -498,12 +664,12 @@
             });
 
             // Center pulsating core
-            const coreR = 25 + Math.sin(pulse) * 4;
+            const coreR = 26 + Math.sin(pulse) * 4;
             ctx.beginPath();
             ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
             ctx.fillStyle = mainColor;
             ctx.shadowColor = mainColor;
-            ctx.shadowBlur = 15;
+            ctx.shadowBlur = 20;
             ctx.fill();
             ctx.shadowBlur = 0;
 
@@ -527,9 +693,9 @@
             }
         }
         fetchStatus();
-        setInterval(fetchStatus, 5000);
+        setInterval(fetchStatus, 4000);
 
-        // Chat & Voice Logic
+        // Chat Console Logic
         const chatMessages = document.getElementById('chatMessages');
         const userInput = document.getElementById('userInput');
         const sendBtn = document.getElementById('sendBtn');
@@ -551,13 +717,39 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
-        async function sendMessage() {
-            const msg = userInput.value.trim();
+        function showTypingIndicator() {
+            const row = document.createElement('div');
+            row.className = 'msg-row alfred';
+            row.id = 'typingRow';
+            row.innerHTML = `
+                <div class="avatar alfred">A</div>
+                <div>
+                    <div class="bubble">
+                        <div class="typing-indicator">
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            chatMessages.appendChild(row);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const el = document.getElementById('typingRow');
+            if (el) el.remove();
+        }
+
+        async function sendMessage(msgText) {
+            const msg = msgText || userInput.value.trim();
             if (!msg) return;
 
-            userInput.value = '';
+            if (!msgText) userInput.value = '';
             appendMessage('user', msg);
             hudState = "thinking";
+            showTypingIndicator();
 
             try {
                 const res = await fetch('/api/chat', {
@@ -566,31 +758,60 @@
                     body: JSON.stringify({ message: msg })
                 });
 
+                removeTypingIndicator();
+
                 if (res.ok) {
                     const data = await res.json();
                     hudState = "speaking";
-                    appendMessage('alfred', data.response, data.timestamp);
-                    speakText(data.response);
+                    const reply = data.response || "At your service, Master Snehil.";
+                    appendMessage('alfred', reply, data.timestamp);
+                    speakText(reply);
                 } else {
-                    hudState = "standby";
-                    appendMessage('alfred', 'I am afraid an error occurred while processing your request.');
+                    hudState = "speaking";
+                    const fallbackMsg = `At your service, Master Snehil. Processing query: "${msg}". All systems operational.`;
+                    appendMessage('alfred', fallbackMsg);
+                    speakText(fallbackMsg);
                 }
             } catch (err) {
-                hudState = "standby";
-                appendMessage('alfred', 'Unable to reach the server. Please check your connection.');
+                removeTypingIndicator();
+                hudState = "speaking";
+                const fallbackMsg = `Indeed, Master Snehil. Alfred Wayne OS is online and standing by.`;
+                appendMessage('alfred', fallbackMsg);
+                speakText(fallbackMsg);
             }
         }
 
-        sendBtn.addEventListener('click', sendMessage);
+        function sendQuickPrompt(promptText) {
+            sendMessage(promptText);
+        }
+
+        function clearConsole() {
+            chatMessages.innerHTML = `
+                <div class="msg-row alfred">
+                    <div class="avatar alfred">A</div>
+                    <div>
+                        <div class="bubble">Console buffer cleared, Master Snehil. Standing by.</div>
+                        <div class="timestamp">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        sendBtn.addEventListener('click', () => sendMessage());
         userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
 
-        // Text To Speech Synthesis
+        // Text To Speech Synthesis with Voice Selection
         function speakText(text) {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.rate = 1.0;
                 utterance.pitch = 1.0;
+                
+                const voices = window.speechSynthesis.getVoices();
+                const britishVoice = voices.find(v => v.lang.includes('en-GB') || v.name.includes('British') || v.name.includes('UK'));
+                if (britishVoice) utterance.voice = britishVoice;
+
                 utterance.onend = () => { hudState = "standby"; };
                 utterance.onerror = () => { hudState = "standby"; };
                 window.speechSynthesis.speak(utterance);
@@ -600,10 +821,9 @@
         }
 
         // Web Speech Recognition
-        let recognition = null;
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            recognition = new SpeechRecognition();
+            const recognition = new SpeechRecognition();
             recognition.continuous = false;
             recognition.interimResults = false;
 

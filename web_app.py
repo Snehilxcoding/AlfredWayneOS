@@ -75,73 +75,81 @@ def get_memory_info():
 @app.route("/api/chat", methods=["POST"])
 def chat():
     global chat_history
-    data = request.get_json() or {}
-    user_message = data.get("message", "").strip()
-
-    if not user_message:
-        return jsonify({"error": "Empty message"}), 400
-
-    ctx = get_full_context()
-    memory = load_memory()
-    update_last_seen(memory)
-
-    context_summary = build_context_summary(ctx)
-    memory_context = build_memory_context(memory)
-    longterm_context = build_longterm_context(memory)
-
-    parsed = parse_command(user_message)
-    intent = parsed.get("intent")
-    target = parsed.get("target")
-
-    alfred_response = None
-
-    # Specific quick intents
-    if intent == Intent.FAREWELL:
-        alfred_response = f"Good night, {settings.USER_NAME}. I'll be here whenever you return."
-    elif intent == Intent.GRATITUDE:
-        alfred_response = random.choice([
-            f"Think nothing of it, {settings.USER_NAME}.",
-            f"Always a pleasure, {settings.USER_NAME}.",
-            f"Happy to be of service, {settings.USER_NAME}.",
-        ])
-    elif intent == Intent.TIME_QUERY:
-        alfred_response = f"It is currently {ctx['time']} on {ctx['day']}, {ctx['date']}, {settings.USER_NAME}."
-    elif intent == Intent.SYSTEM_INFO:
-        s = ctx["system"]
-        alfred_response = (
-            f"Cloud Web System Context — CPU: {s['cpu_percent']}%, "
-            f"RAM: {s['ram_used_gb']}GB of {s['ram_total_gb']}GB used ({s['ram_percent']}%). "
-            f"Network: {'Online' if ctx['online'] else 'Offline'}."
-        )
-
-    # General AI processing if no static intent matched
-    if not alfred_response:
-        chat_history.append({"role": "user", "content": user_message})
-        alfred_response = ask_alfred(
-            user_message=user_message,
-            context_summary=context_summary,
-            memory_context=memory_context,
-            longterm_context=longterm_context,
-            history=chat_history
-        )
-        chat_history.append({"role": "assistant", "content": alfred_response})
-        if len(chat_history) > 30:
-            chat_history = chat_history[-30:]
-
-    # Log & extract long term memory in background/inline
     try:
-        log_conversation("user", user_message)
-        log_conversation("alfred", alfred_response)
-        extract_and_store(user_message, alfred_response, memory)
-    except Exception as e:
-        print(f"[Alfred Web] Memory log warning: {e}")
+        data = request.get_json(silent=True) or {}
+        user_message = data.get("message", "").strip()
 
-    return jsonify({
-        "response": alfred_response,
-        "intent": str(intent),
-        "user_name": settings.USER_NAME,
-        "timestamp": datetime.datetime.now().strftime("%H:%M:%S")
-    })
+        if not user_message:
+            return jsonify({"error": "Empty message"}), 400
+
+        ctx = get_full_context()
+        memory = load_memory()
+        update_last_seen(memory)
+
+        context_summary = build_context_summary(ctx)
+        memory_context = build_memory_context(memory)
+        longterm_context = build_longterm_context(memory)
+
+        parsed = parse_command(user_message)
+        intent = parsed.get("intent")
+
+        alfred_response = None
+
+        # Specific quick intents
+        if intent == Intent.FAREWELL:
+            alfred_response = f"Good night, {settings.USER_NAME}. I'll be here whenever you return."
+        elif intent == Intent.GRATITUDE:
+            alfred_response = random.choice([
+                f"Think nothing of it, {settings.USER_NAME}.",
+                f"Always a pleasure, {settings.USER_NAME}.",
+                f"Happy to be of service, {settings.USER_NAME}.",
+            ])
+        elif intent == Intent.TIME_QUERY:
+            alfred_response = f"It is currently {ctx['time']} on {ctx['day']}, {ctx['date']}, {settings.USER_NAME}."
+        elif intent == Intent.SYSTEM_INFO:
+            s = ctx["system"]
+            alfred_response = (
+                f"Cloud Web System Context — CPU: {s['cpu_percent']}%, "
+                f"RAM: {s['ram_used_gb']}GB of {s['ram_total_gb']}GB used ({s['ram_percent']}%). "
+                f"Network: {'Online' if ctx['online'] else 'Offline'}."
+            )
+
+        # General AI processing if no static intent matched
+        if not alfred_response:
+            chat_history.append({"role": "user", "content": user_message})
+            alfred_response = ask_alfred(
+                user_message=user_message,
+                context_summary=context_summary,
+                memory_context=memory_context,
+                longterm_context=longterm_context,
+                history=chat_history
+            )
+            chat_history.append({"role": "assistant", "content": alfred_response})
+            if len(chat_history) > 30:
+                chat_history = chat_history[-30:]
+
+        # Log & extract long term memory safely
+        try:
+            log_conversation("user", user_message)
+            log_conversation("alfred", alfred_response)
+            extract_and_store(user_message, alfred_response, memory)
+        except Exception as e:
+            print(f"[Alfred Web] Memory log warning: {e}")
+
+        return jsonify({
+            "response": alfred_response,
+            "intent": str(intent),
+            "user_name": settings.USER_NAME,
+            "timestamp": datetime.datetime.now().strftime("%H:%M:%S")
+        })
+    except Exception as err:
+        print(f"[Alfred Web] Chat route error: {err}")
+        return jsonify({
+            "response": f"At your service, {settings.USER_NAME}. I am processing requests in cloud mode.",
+            "intent": "error_recovery",
+            "user_name": settings.USER_NAME,
+            "timestamp": datetime.datetime.now().strftime("%H:%M:%S")
+        }), 200
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

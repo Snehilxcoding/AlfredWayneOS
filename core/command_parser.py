@@ -56,21 +56,22 @@ def parse_command(text: str) -> dict:
 
     # ── Time / Date ──────────────────────────────────────────
     if any(k in t for k in [
-        "what time", "what's the time", "what day",
-        "what date", "today's date", "what year",
-        "current time", "current date",
-    ]):
+        "what time", "what's the time", "what is the time", "tell me the time",
+        "time right now", "current time", "what day", "what date", "today's date",
+        "what year", "current date", "time is it"
+    ]) or t.strip() in ["time", "date", "clock"]:
         result["intent"] = Intent.TIME_QUERY
         return result
 
     # ── System Info ──────────────────────────────────────────
     if (
-        any(k in t for k in ["memory usage", "system info", "computer status"])
-        or any(_contains(t, k) for k in ["battery", "ram", "cpu", "uptime"])
+        any(k in t for k in ["memory usage", "system info", "computer status", "system status", "status report"])
+        or any(_contains(t, k) for k in ["battery", "ram", "cpu", "uptime", "telemetry"])
         or any(k in t for k in [
             "am i online", "internet status", "check internet",
             "internet connection", "are we connected"
         ])
+        or t.strip() in ["status", "sysinfo", "stats"]
     ):
         result["intent"] = Intent.SYSTEM_INFO
         return result

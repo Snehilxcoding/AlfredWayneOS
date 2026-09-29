@@ -158,6 +158,19 @@ def _try_gemini(messages: list, system_prompt: str, max_retries: int = 3) -> str
     return None
 
 
+def _fallback_butler_response(user_message: str) -> str:
+    msg = user_message.lower().strip()
+    if any(w in msg for w in ["hello", "hi", "hey", "greetings", "good morning", "good afternoon", "good evening"]):
+        return f"Good day, {USER_NAME}. I am standing by to assist you."
+    if any(w in msg for w in ["who are you", "your name", "what are you"]):
+        return f"I am Alfred, your personal AI butler and operating companion, {USER_NAME}."
+    if any(w in msg for w in ["what can you do", "help", "capabilities", "features"]):
+        return f"I am equipped to manage system telemetry, monitor memory contexts, execute automated routines, and process complex AI queries, {USER_NAME}."
+    if any(w in msg for w in ["how are you", "how do you do"]):
+        return f"All systems are functioning nominally, {USER_NAME}. Thank you for asking."
+    return f"At your service, {USER_NAME}. I am operating in cloud interface mode. To enable full generative AI reasoning on Render, please attach your GROQ_API_KEY or GEMINI_API_KEY environment variable in the Render Dashboard."
+
+
 # ── Main entry point ─────────────────────────────────────────
 
 def ask_alfred(
@@ -194,8 +207,5 @@ def ask_alfred(
         if result:
             return result
 
-    # ── Both failed ──────────────────────────────────────────
-    return (
-        f"I'm afraid both of my thinking systems are unavailable, "
-        f"{USER_NAME}. Please check your internet connection and try again."
-    )
+    # ── Fallback Butler Response ──────────────────────────────
+    return _fallback_butler_response(user_message)

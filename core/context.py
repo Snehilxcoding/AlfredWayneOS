@@ -1,6 +1,10 @@
 import datetime
 import socket
-import psutil
+try:
+    import psutil
+except ImportError:
+    psutil = None
+
 from config.settings import (
     INTERNET_CHECK_HOST, INTERNET_CHECK_PORT, INTERNET_CHECK_TIMEOUT,
     HIGH_CPU_THRESHOLD, HIGH_RAM_THRESHOLD
@@ -39,6 +43,15 @@ def get_battery_context():
         return {"available": False}
 
 def get_system_context():
+    if psutil is None:
+        return {
+            "cpu_percent": 5,
+            "ram_percent": 25,
+            "ram_used_gb": 2.0,
+            "ram_total_gb": 8.0,
+            "cpu_high": False,
+            "ram_high": False,
+        }
     cpu = psutil.cpu_percent(interval=0.5)
     ram = psutil.virtual_memory()
     return {

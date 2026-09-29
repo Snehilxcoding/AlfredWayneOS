@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alfred Wayne OS — Autonomous AI Companion</title>
+    <meta name="description" content="Alfred Wayne OS - Web Interface and Live AI Assistant HUD">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #030712;
+            --panel-bg: rgba(15, 23, 42, 0.75);
+            --panel-border: rgba(56, 189, 248, 0.2);
+            --cyan-glow: #38bdf8;
+            --cyan-accent: #00bfff;
+            --amber-accent: #f97316;
+            --green-accent: #10b981;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.12), transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(249, 115, 22, 0.08), transparent 40%);
+        }
+
+        header {
+            padding: 1.25rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--panel-border);
+            backdrop-filter: blur(12px);
+            background: rgba(3, 7, 18, 0.8);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .brand-logo {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--cyan-glow) 0%, rgba(56, 189, 248, 0.1) 70%);
+            border: 2px solid var(--cyan-glow);
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: #fff;
+            font-size: 1.1rem;
+        }
+
+        .brand-title {
+            font-size: 1.35rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            background: linear-gradient(135deg, #fff 0%, var(--cyan-glow) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.9rem;
+            border-radius: 20px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--green-accent);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--green-accent);
+            box-shadow: 0 0 8px var(--green-accent);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.85); }
+        }
+
+        main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        @media (max-width: 1024px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .hud-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            backdrop-filter: blur(16px);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            gap: 1.25rem;
+        }
+
+        .hud-canvas-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        canvas#hudCanvas {
+            width: 300px;
+            height: 300px;
+        }
+
+        .hud-state-label {
+            position: absolute;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            color: var(--cyan-glow);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            font-weight: 600;
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+        }
+
+        .telemetry-grid {
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.8rem;
+        }
+
+        .telemetry-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 0.75rem;
+            border-radius: 10px;
+        }
+
+        .telemetry-label {
+            color: var(--text-dim);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            margin-bottom: 0.25rem;
+        }
+
+        .telemetry-val {
+            color: var(--cyan-glow);
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .chat-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            backdrop-filter: blur(16px);
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 120px);
+            min-height: 550px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+        }
+
+        .chat-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            scroll-behavior: smooth;
+        }
+
+        .msg-row {
+            display: flex;
+            gap: 0.75rem;
+            max-width: 85%;
+        }
+
+        .msg-row.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .msg-row.alfred {
+            align-self: flex-start;
+        }
+
+        .avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+
+        .avatar.alfred {
+            background: rgba(56, 189, 248, 0.2);
+            border: 1px solid var(--cyan-glow);
+            color: var(--cyan-glow);
+        }
+
+        .avatar.user {
+            background: rgba(249, 115, 22, 0.2);
+            border: 1px solid var(--amber-accent);
+            color: var(--amber-accent);
+        }
+
+        .bubble {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 0.85rem 1.15rem;
+            border-radius: 14px;
+            line-height: 1.5;
+            font-size: 0.95rem;
+            position: relative;
+        }
+
+        .msg-row.alfred .bubble {
+            border-top-left-radius: 2px;
+            border-color: rgba(56, 189, 248, 0.25);
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.6) 100%);
+        }
+
+        .msg-row.user .bubble {
+            border-top-right-radius: 2px;
+            border-color: rgba(249, 115, 22, 0.3);
+            background: rgba(30, 41, 59, 0.85);
+        }
+
+        .timestamp {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-top: 0.35rem;
+            font-family: 'Fira Code', monospace;
+        }
+
+        .chat-input-bar {
+            padding: 1.25rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            gap: 0.75rem;
+            background: rgba(15, 23, 42, 0.9);
+        }
+
+        input[type="text"] {
+            flex: 1;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid var(--panel-border);
+            border-radius: 10px;
+            padding: 0.85rem 1.1rem;
+            color: #fff;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--cyan-glow);
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 0 1.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(56, 189, 248, 0.4);
+        }
+
+        .btn-icon {
+            background: transparent;
+            border: 1px solid var(--panel-border);
+            color: var(--cyan-glow);
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-icon:hover {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: var(--cyan-glow);
+        }
+
+        .btn-icon.active {
+            background: rgba(249, 115, 22, 0.2);
+            border-color: var(--amber-accent);
+            color: var(--amber-accent);
+            box-shadow: 0 0 10px rgba(249, 115, 22, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="brand">
+            <div class="brand-logo">A</div>
+            <div class="brand-title">ALFRED WAYNE OS</div>
+        </div>
+        <div class="status-badge">
+            <div class="status-dot"></div>
+            <span>LIVE ON RENDER</span>
+        </div>
+    </header>
+
+    <main>
+        <!-- HUD Telemetry Panel -->
+        <section class="hud-panel">
+            <div class="hud-canvas-container">
+                <canvas id="hudCanvas" width="300" height="300"></canvas>
+                <div class="hud-state-label" id="hudStateLabel">STANDBY</div>
+            </div>
+
+            <div class="telemetry-grid">
+                <div class="telemetry-card">
+                    <div class="telemetry-label">System Time</div>
+                    <div class="telemetry-val" id="telemetryTime">--:--:--</div>
+                </div>
+                <div class="telemetry-card">
+                    <div class="telemetry-label">CPU Load</div>
+                    <div class="telemetry-val" id="telemetryCpu">0%</div>
+                </div>
+                <div class="telemetry-card">
+                    <div class="telemetry-label">RAM Usage</div>
+                    <div class="telemetry-val" id="telemetryRam">0GB</div>
+                </div>
+                <div class="telemetry-card">
+                    <div class="telemetry-label">Memories</div>
+                    <div class="telemetry-val" id="telemetryMem">0</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Chat Console -->
+        <section class="chat-panel">
+            <div class="chat-header">
+                <div class="chat-title">Interactive Console</div>
+                <div style="font-family: 'Fira Code', monospace; font-size: 0.8rem; color: var(--text-dim);" id="userGreeting">
+                    Master Snehil
+                </div>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+                <div class="msg-row alfred">
+                    <div class="avatar alfred">A</div>
+                    <div>
+                        <div class="bubble">Good day, Master Snehil. Alfred Wayne OS is online and operational on Render. How may I be of assistance?</div>
+                        <div class="timestamp" id="initTime">--:--</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-input-bar">
+                <button class="btn-icon" id="micBtn" title="Voice Input (Speech Recognition)">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                        <line x1="12" y1="19" x2="12" y2="23"></line>
+                        <line x1="8" y1="23" x2="16" y2="23"></line>
+                    </svg>
+                </button>
+                <input type="text" id="userInput" placeholder="Ask Alfred anything or type a command..." autocomplete="off">
+                <button class="btn" id="sendBtn">
+                    <span>Send</span>
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Set initial timestamp
+        document.getElementById('initTime').innerText = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+        // HUD Canvas Animation
+        const canvas = document.getElementById('hudCanvas');
+        const ctx = canvas.getContext('2d');
+        const stateLabel = document.getElementById('hudStateLabel');
+        let angle1 = 0, angle2 = 0, pulse = 0;
+        let hudState = "standby"; // standby, listening, thinking, speaking
+
+        function drawHUD() {
+            ctx.clearRect(0, 0, 300, 300);
+            const cx = 150, cy = 150;
+            angle1 += 0.01;
+            angle2 -= 0.008;
+            pulse += 0.04;
+
+            let mainColor = "#38bdf8"; // cyan
+            if (hudState === "listening") mainColor = "#00bfff";
+            if (hudState === "thinking") mainColor = "#f97316"; // amber
+            if (hudState === "speaking") mainColor = "#10b981"; // green
+
+            stateLabel.innerText = hudState.toUpperCase();
+            stateLabel.style.color = mainColor;
+
+            // Rings definition
+            const rings = [
+                { r: 125, count: 18, gap: 0.15, speed: angle1, color: mainColor, w: 2.5 },
+                { r: 105, count: 12, gap: 0.2, speed: angle2, color: "#f97316", w: 1.5 },
+                { r: 85, count: 14, gap: 0.15, speed: angle1 * 1.2, color: mainColor, w: 1.5 },
+                { r: 65, count: 8, gap: 0.25, speed: angle2 * 1.5, color: "rgba(56, 189, 248, 0.4)", w: 1 }
+            ];
+
+            rings.forEach(ring => {
+                const segAngle = (Math.PI * 2) / ring.count;
+                for (let i = 0; i < ring.count; i++) {
+                    const start = ring.speed + i * segAngle;
+                    const end = start + segAngle - ring.gap;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, ring.r, start, end);
+                    ctx.strokeStyle = ring.color;
+                    ctx.lineWidth = ring.w;
+                    ctx.stroke();
+                }
+            });
+
+            // Center pulsating core
+            const coreR = 25 + Math.sin(pulse) * 4;
+            ctx.beginPath();
+            ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
+            ctx.fillStyle = mainColor;
+            ctx.shadowColor = mainColor;
+            ctx.shadowBlur = 15;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            requestAnimationFrame(drawHUD);
+        }
+        drawHUD();
+
+        // Telemetry Update Loop
+        async function fetchStatus() {
+            try {
+                const res = await fetch('/api/status');
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('telemetryTime').innerText = data.time || new Date().toLocaleTimeString();
+                    document.getElementById('telemetryCpu').innerText = (data.cpu_percent || 0) + '%';
+                    document.getElementById('telemetryRam').innerText = (data.ram_used_gb || 0) + 'GB';
+                    document.getElementById('telemetryMem').innerText = data.longterm_memories_count || 0;
+                }
+            } catch (e) {
+                console.warn('Status fetch error:', e);
+            }
+        }
+        fetchStatus();
+        setInterval(fetchStatus, 5000);
+
+        // Chat & Voice Logic
+        const chatMessages = document.getElementById('chatMessages');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const micBtn = document.getElementById('micBtn');
+
+        function appendMessage(sender, text, timeStr) {
+            const row = document.createElement('div');
+            row.className = `msg-row ${sender}`;
+            const time = timeStr || new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
+            row.innerHTML = `
+                <div class="avatar ${sender}">${sender === 'alfred' ? 'A' : 'U'}</div>
+                <div>
+                    <div class="bubble">${text}</div>
+                    <div class="timestamp">${time}</div>
+                </div>
+            `;
+            chatMessages.appendChild(row);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const msg = userInput.value.trim();
+            if (!msg) return;
+
+            userInput.value = '';
+            appendMessage('user', msg);
+            hudState = "thinking";
+
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: msg })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    hudState = "speaking";
+                    appendMessage('alfred', data.response, data.timestamp);
+                    speakText(data.response);
+                } else {
+                    hudState = "standby";
+                    appendMessage('alfred', 'I am afraid an error occurred while processing your request.');
+                }
+            } catch (err) {
+                hudState = "standby";
+                appendMessage('alfred', 'Unable to reach the server. Please check your connection.');
+            }
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+
+        // Text To Speech Synthesis
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+                utterance.onend = () => { hudState = "standby"; };
+                utterance.onerror = () => { hudState = "standby"; };
+                window.speechSynthesis.speak(utterance);
+            } else {
+                setTimeout(() => { hudState = "standby"; }, 3000);
+            }
+        }
+
+        // Web Speech Recognition
+        let recognition = null;
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            recognition.onstart = () => {
+                micBtn.classList.add('active');
+                hudState = "listening";
+            };
+
+            recognition.onresult = (e) => {
+                const transcript = e.results[0][0].transcript;
+                userInput.value = transcript;
+                sendMessage();
+            };
+
+            recognition.onend = () => {
+                micBtn.classList.remove('active');
+            };
+
+            recognition.onerror = () => {
+                micBtn.classList.remove('active');
+                hudState = "standby";
+            };
+
+            micBtn.addEventListener('click', () => {
+                try {
+                    recognition.start();
+                } catch(e) {
+                    recognition.stop();
+                }
+            });
+        } else {
+            micBtn.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
